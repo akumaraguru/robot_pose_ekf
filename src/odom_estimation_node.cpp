@@ -83,6 +83,10 @@ namespace estimation
     nh_private.param("gps_used",   gps_used_, false);
     nh_private.param("debug",   debug_, false);
     nh_private.param("self_diagnose",  self_diagnose_, false);
+    nh_private.param("odom_topic", odom_topic_, std::string("odom"));
+    nh_private.param("imu_topic", imu_topic_, std::string("imu"));
+    nh_private.param("vo_topic", vo_topic_, std::string("vo"));
+    nh_private.param("gps_topic", gps_topic_, std::string("gps"));
     double freq;
     nh_private.param("freq", freq, 30.0);
 
@@ -101,7 +105,7 @@ namespace estimation
     timer_ = nh_private.createTimer(ros::Duration(1.0/max(freq,1.0)), &OdomEstimationNode::spin, this);
 
     // advertise our estimation
-    pose_pub_ = nh_private.advertise<geometry_msgs::PoseWithCovarianceStamped>("odom_combined", 10);
+    pose_pub_ = nh_private.advertise<geometry_msgs::PoseWithCovarianceStamped>(output_frame_, 10);
 
     // initialize
     filter_stamp_ = Time::now();
@@ -109,27 +113,27 @@ namespace estimation
     // subscribe to odom messages
     if (odom_used_){
       ROS_DEBUG("Odom sensor can be used");
-      odom_sub_ = nh.subscribe("odom_w_cov", 10, &OdomEstimationNode::odomCallback, this);
+      odom_sub_ = nh.subscribe(odom_topic_, 10, &OdomEstimationNode::odomCallback, this);
     }
     else ROS_DEBUG("Odom sensor will NOT be used");
 
     // subscribe to imu messages
     if (imu_used_){
       ROS_DEBUG("Imu sensor can be used");
-      imu_sub_ = nh.subscribe("imu", 10,  &OdomEstimationNode::imuCallback, this);
+      imu_sub_ = nh.subscribe(imu_topic_, 10,  &OdomEstimationNode::imuCallback, this);
     }
     else ROS_DEBUG("Imu sensor will NOT be used");
 
     // subscribe to vo messages
     if (vo_used_){
       ROS_DEBUG("VO sensor can be used");
-      vo_sub_ = nh.subscribe("vo", 10, &OdomEstimationNode::voCallback, this);
+      vo_sub_ = nh.subscribe(vo_topic_, 10, &OdomEstimationNode::voCallback, this);
     }
     else ROS_DEBUG("VO sensor will NOT be used");
 
     if (gps_used_){
       ROS_DEBUG("GPS sensor can be used");
-      gps_sub_ = nh.subscribe("gps", 10, &OdomEstimationNode::gpsCallback, this);
+      gps_sub_ = nh.subscribe(gps_topic_, 10, &OdomEstimationNode::gpsCallback, this);
     }
     else ROS_DEBUG("GPS sensor will NOT be used");
 
@@ -301,7 +305,7 @@ namespace estimation
     for (unsigned int i=0; i<6; i++)
       for (unsigned int j=0; j<6; j++)
         vo_covariance_(i+1, j+1) = vo->pose.covariance[6*i+j];
-    my_filter_.addMeasurement(StampedTransform(vo_meas_.inverse(), vo_stamp_, base_footprint_frame_, "vo"), vo_covariance_);
+    my_filter_.addMeasurement(StampedTransform(vo_meas_.inverse(), vo_stamp_, base_footprint_frame_, vo_topic_), vo_covariance_);
     
     // activate vo
     if (!vo_active_) {
@@ -350,7 +354,7 @@ namespace estimation
     for (unsigned int i=0; i<3; i++)
       for (unsigned int j=0; j<3; j++)
         gps_covariance_(i+1, j+1) = gps_pose.covariance[6*i+j];
-    my_filter_.addMeasurement(StampedTransform(gps_meas_.inverse(), gps_stamp_, base_footprint_frame_, "gps"), gps_covariance_);
+    my_filter_.addMeasurement(StampedTransform(gps_meas_.inverse(), gps_stamp_, base_footprint_frame_, gps_topic_), gps_covariance_);
     
     // activate gps
     if (!gps_active_) {

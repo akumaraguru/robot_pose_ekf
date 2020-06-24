@@ -10,6 +10,8 @@
   <param name="vo_used" value="false"/>
   <param name="debug" value="false"/>
   <param name="self_diagnose" value="false"/>
+  <param name="odom_topic" value="odom_w_cov"/>
+  <param name="imu_topic" value="imu"/>
 </node>
 
 </launch>
